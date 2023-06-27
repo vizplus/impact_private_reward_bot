@@ -1,13 +1,17 @@
-import os
+'''
+1. админы или просто "спонсоры" чата форвардят полезные сообщения в бот;
+2. бот запоминает того, кто форварднул (спонсора), автора сообщения и текст сообщения (ты это уже фактически сделал) 
+и передаёт эти данные в специальный скрипт на сервере;
+3. скрипт сопоставляет телеграм-аккаунты спонсора и получателя награды с их аккаунтами в ВИЗе;
+4. скрипт проводит несколько транзакций, в результате которых получатель награды получает токены viz от спонсора на свой аккаунт в ВИЗе.
+'''
+
+
 import logging
 
-from dotenv import load_dotenv
-
 from aiogram import Bot, Dispatcher, executor, types
+from config import API_TOKEN, DATABASE_URL
 
-load_dotenv()
-
-API_TOKEN = os.environ.get('API_TOKEN')
 
 logging.basicConfig(level=logging.INFO)
 

@@ -10,6 +10,7 @@ packages = [{include = "tg_bot_viz"}]
 python = "^3.10"
 aiogram = "^2.25.1"
 python-dotenv = "^1.0.0"
+gino = "^1.0.1"
 
 
 [build-system]
