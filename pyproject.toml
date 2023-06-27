@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "tg-bot-viz"
+version = "0.1.0"
+description = ""
+authors = ["David-Roklem <roklem@mail.ru>"]
+readme = "README.md"
+packages = [{include = "tg_bot_viz"}]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+aiogram = "^2.25.1"
+python-dotenv = "^1.0.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
