@@ -12,7 +12,7 @@ import logging
 
 from aiogram import Bot, Dispatcher, executor, types
 from config import (
-    API_TOKEN, DB_NAME, DB_USER, DB_PASSW, DB_HOST, DB_PORT
+    API_TOKEN, DB_NAME, DB_USER, DB_PASSW, DB_HOST, DB_PORT, DATABASE_URL
 )
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
@@ -63,7 +63,7 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(
-        Regexp(),
+        #Regexp(),
         state=FSMIntro.Q_reward_size
 )
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
