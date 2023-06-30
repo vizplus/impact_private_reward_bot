@@ -6,7 +6,7 @@
 4. скрипт проводит несколько транзакций, в результате которых получатель награды получает токены viz от спонсора на свой аккаунт в ВИЗе.
 '''
 import asyncio
-# import asyncpg
+import asyncpg
 
 import logging
 
@@ -62,49 +62,49 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
     await FSMIntro.next()
 
 
-# @dp.message_handler(
-#         #Regexp(),
-#         state=FSMIntro.Q_reward_size
-# )
-# async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
-#     answer = message.text
-#     async with state.proxy() as data:
-#         data['reward_size'] = answer
+@dp.message_handler(
+        #Regexp(),
+        state=FSMIntro.Q_reward_size
+)
+async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
+    answer = message.text
+    async with state.proxy() as data:
+        data['reward_size'] = answer
 
-#     data = await state.get_data()
-#     tg_id = message.from_user.id
-#     name = data.get('name')
-#     reg_key = data.get('reg_key')
-#     reward_size = data.get('reward_size')
-#     print(
-#         type(tg_id),
-#         type(name),
-#         type(reg_key),
-#         type(reward_size)
-#     )
+    data = await state.get_data()
+    tg_id = message.from_user.id
+    name = data.get('name')
+    reg_key = data.get('reg_key')
+    reward_size = data.get('reward_size')
+    print(
+        type(tg_id),
+        type(name),
+        type(reg_key),
+        type(reward_size)
+    )
 
-#     connection = await asyncpg.connect(
-#         user=DB_USER,
-#         password=DB_PASSW,
-#         database=DB_NAME,
-#         host=DB_HOST,
-#         port=DB_PORT
-#     )
+    connection = await asyncpg.connect(
+        user=DB_USER,
+        password=DB_PASSW,
+        database=DB_NAME,
+        host=DB_HOST,
+        port=DB_PORT
+    )
 
-#     await create_table(connection)
+    await create_table(connection)
 
-#     await connection.execute('''
-#         INSERT INTO vip_users (
-#         tg_id, viz_account, regular_key, reward_size
-#         )
-#         VALUES ($1, $2, $3::text, $4);
-#     ''', tg_id, name, reg_key, reward_size)
+    await connection.execute('''
+        INSERT INTO vip_users (
+        tg_id, viz_account, regular_key, reward_size
+        )
+        VALUES ($1, $2, $3::text, $4);
+    ''', tg_id, name, reg_key, reward_size)
 
-#     await connection.close()
+    await connection.close()
 
-#     await message.answer('Your settings are saved to database!')
+    await message.answer('Your settings are saved to database!')
 
-#     await state.finish()
+    await state.finish()
 
 
 # @dp.message_handler()
