@@ -33,7 +33,6 @@ dp = Dispatcher(bot, storage=storage)
 @dp.message_handler(commands=['start'])
 async def handle_start_command(message: types.Message):
     await message.answer(
-        #'provide name, reg key and reward size divided by comma'
         'Hello! Please, write your name:'
     )
     await FSMIntro.Q_name.set()
@@ -63,7 +62,6 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(
-        #Regexp(),
         state=FSMIntro.Q_reward_size
 )
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
@@ -76,12 +74,6 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     name = data.get('name')
     reg_key = data.get('reg_key')
     reward_size = data.get('reward_size')
-    print(
-        type(tg_id),
-        type(name),
-        type(reg_key),
-        type(reward_size)
-    )
 
     connection = await asyncpg.connect(
         user=DB_USER,
