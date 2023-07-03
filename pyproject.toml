@@ -9,7 +9,7 @@ packages = [{include = "tg_bot_viz"}]
 [tool.poetry.dependencies]
 python = "^3.10"
 aiogram = "^2.25.1"
-python-dotenv = "^1.0.0"
+python-dotenv = "^0.21.0"
 asyncpg = "^0.27.0"
 viz-python-lib = "^0.1.0"
 
