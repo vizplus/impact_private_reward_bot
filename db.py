@@ -11,7 +11,6 @@ async def establish_connection():
             host=DB_HOST,
             port=DB_PORT
         )
-    return connection
 
 
 async def create_table(connection):

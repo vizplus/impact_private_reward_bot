@@ -1,25 +1,14 @@
-'''
-1. админы или просто "спонсоры" чата форвардят полезные сообщения в бот;
-2. бот запоминает того, кто форварднул (спонсора), автора сообщения и текст сообщения (ты это уже фактически сделал) 
-и передаёт эти данные в специальный скрипт на сервере;
-3. скрипт сопоставляет телеграм-аккаунты спонсора и получателя награды с их аккаунтами в ВИЗе;
-4. скрипт проводит несколько транзакций, в результате которых получатель награды получает токены viz от спонсора на свой аккаунт в ВИЗе.
-'''
-import asyncio
 import asyncpg
 
 import logging
 
 from aiogram import Bot, Dispatcher, executor, types
-from config import (
-    API_TOKEN, DB_NAME, DB_USER, DB_PASSW, DB_HOST, DB_PORT, DATABASE_URL
-)
+from config import API_TOKEN, DB_NAME, DB_USER, DB_PASSW, DB_HOST, DB_PORT
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
 from db import create_table
 from states import FSMIntro
-from filters import Regexp
 
 
 logging.basicConfig(level=logging.INFO)
@@ -99,59 +88,33 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-# @dp.message_handler()
-# async def echo(message: types.Message):
-#     user_id = message.from_user.id
-#     author_id = message.forward_from.id if message.forward_from\
-#         else message.from_user.id
-#     text = message.text
-#     await message.answer(f'<b>Ваш ID:</b> {user_id}\n'
-#                          f'<b>ID автора сообщения:</b> {author_id}\n'
-#                          f'<b>Сообщение:</b> {text}', parse_mode='html')
+@dp.message_handler()
+async def echo(message: types.Message):
+    user_id = message.from_user.id
+    author_id = message.forward_from.id if message.forward_from\
+        else message.from_user.id
+    if user_id != author_id:
+        # text = message.text
+        #  What do I need to safe the text of the forwarded msg for?
 
+        connection = await asyncpg.connect(
+            user=DB_USER,
+            password=DB_PASSW,
+            database=DB_NAME,
+            host=DB_HOST,
+            port=DB_PORT
+        )
 
-# @dp.message_handler(lambda msg: len(msg.text.replace(' ', '').split(',')) == 3)
-# async def forward_msg(message: types.Message):
-#     text = message.text
-#     print('text:', text)
-#     items = text.replace(' ', '').split(',')
-#     print('items:', items)
-#     tg_id = message.from_user.id
-#     name = items[0]
-#     reg_key = items[1]
-#     reward_size = items[2]
+        reward_size = await connection.fetchrow('''
+            SELECT reward_size from vip_users
+            WHERE tg_id = $1 ORDER BY id DESC LIMIT 1;
+        ''', user_id)
 
-#     connection = await asyncpg.connect(
-#         user=DB_USER,
-#         password=DB_PASSW,
-#         database=DB_NAME,
-#         host=DB_HOST,
-#         port=DB_PORT
-#     )
+        await message.answer(f'You rewarded a user under {author_id} TG-ID\n'
+                             f'with {reward_size[0]} VIZ')
 
-#     await create_table(connection)
-
-#     await connection.execute('''
-#         INSERT INTO vip_users (
-#         tg_id, viz_account, regular_key, reward
-#         )
-#         VALUES ($1, $2, $3::text, $4);
-#     ''', tg_id, name, reg_key, reward_size)
-
-#     data = await connection.fetch('SELECT * FROM vip_users;')
-
-#     await message.answer(data)
-
-#     await connection.close()
-
-#     await message.reply('Data inserted successfully!')
-
-
-@dp.message_handler(content_types='text')
-async def all(message: types.Message):
-    await message.answer(
-        'always work'
-    )
+    else:
+        await message.answer('Please, end forwarded message, not your own!')
 
 
 if __name__ == '__main__':
