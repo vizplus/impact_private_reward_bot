@@ -1,13 +1,11 @@
-import asyncpg
-
 import logging
 
 from aiogram import Bot, Dispatcher, executor, types
-from config import API_TOKEN, DB_NAME, DB_USER, DB_PASSW, DB_HOST, DB_PORT
+from config import API_TOKEN
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
-from db import create_table
+from db import create_table, est_connection
 from states import FSMIntro
 
 
@@ -23,13 +21,8 @@ dp = Dispatcher(bot, storage=storage)
 async def handle_start_command(message: types.Message):
     user_id = message.from_user.id
 
-    connection = await asyncpg.connect(
-            user=DB_USER,
-            password=DB_PASSW,
-            database=DB_NAME,
-            host=DB_HOST,
-            port=DB_PORT
-        )
+    connection = await est_connection()
+
     await create_table(connection)
 
     tg_id = await connection.fetchval('''
@@ -54,13 +47,7 @@ async def handle_start_command(message: types.Message):
 async def handle_edit_command(message: types.Message):
     user_id = message.from_user.id
 
-    connection = await asyncpg.connect(
-            user=DB_USER,
-            password=DB_PASSW,
-            database=DB_NAME,
-            host=DB_HOST,
-            port=DB_PORT
-        )
+    connection = await est_connection()
 
     await connection.execute('''
     DELETE FROM vip_users WHERE tg_id = $1;
@@ -109,13 +96,7 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     reg_key = data.get('reg_key')
     reward_size = data.get('reward_size')
 
-    connection = await asyncpg.connect(
-        user=DB_USER,
-        password=DB_PASSW,
-        database=DB_NAME,
-        host=DB_HOST,
-        port=DB_PORT
-    )
+    connection = await est_connection()
 
     await connection.execute('''
         INSERT INTO vip_users (
@@ -131,22 +112,20 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     await state.finish()
 
 
-@dp.message_handler()
-async def handle_forwarded_msgs(message: types.Message):
+@dp.message_handler(content_types=['any'])
+async def handle_forwarded_text_msgs(message: types.Message):
     user_id = message.from_user.id
     author_id = message.forward_from.id if message.forward_from\
         else message.from_user.id
-    if user_id != author_id:
-        # text = message.text
-        #  What do I need to safe the text of the forwarded msg for?
 
-        connection = await asyncpg.connect(
-            user=DB_USER,
-            password=DB_PASSW,
-            database=DB_NAME,
-            host=DB_HOST,
-            port=DB_PORT
-        )
+    if user_id != author_id:
+        if message.forward_from.is_bot:
+            return await message.answer('You cannot reward a bot 🤷‍♂️')
+
+        message_text = f'\'{message.text[:50]}\'' if message.text\
+            else 'THE FORWARDED MESSAGE DOES NOT CONTAIN TEXT'
+
+        connection = await est_connection()
 
         reward_size = await connection.fetchrow('''
             SELECT reward_size from vip_users WHERE tg_id = $1;
@@ -157,17 +136,23 @@ async def handle_forwarded_msgs(message: types.Message):
         if reward_size:
             await message.answer(
                 f'You rewarded a user under Telegram id {author_id}\n'
-                f'with {reward_size[0]} VIZ'
+                f'with {reward_size[0]} VIZ\n'
+                f'The text from the forwarded message is:\n'
+                f'<em>{message_text}...</em>',
+                parse_mode='html'
             )
-        else:
+        elif not reward_size:
             await message.answer(
                 'You did not provide required data for me '
                 'to handle forwarded messages. '
                 'Use /start command to fix that.'
             )
-
-    else:
-        await message.answer('Please, send forwarded message, not your own!')
+    elif message.forward_from_chat and message.forward_from is None:
+        await message.answer('You cannot reward a channel 🤷‍♂️')
+    elif message.forward_from is None:
+        await message.answer(
+            'You cannot reward the sender of this message!'
+        )
 
 
 if __name__ == '__main__':
