@@ -111,29 +111,37 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 )
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     answer = message.text
-    async with state.proxy() as data:
-        data['reward_size'] = answer
+    try:
+        if int(answer) > 1:
+            async with state.proxy() as data:
+                data['reward_size'] = answer
 
-    data = await state.get_data()
-    tg_id = message.from_user.id
-    name = data.get('name')
-    reg_key = data.get('reg_key')
-    reward_size = data.get('reward_size')
+            data = await state.get_data()
+            tg_id = message.from_user.id
+            name = data.get('name')
+            reg_key = data.get('reg_key')
+            reward_size = data.get('reward_size')
 
-    connection = await est_connection()
+            connection = await est_connection()
 
-    await connection.execute('''
-        INSERT INTO vip_users (
-        tg_id, viz_account, regular_key, reward_size
-        )
-        VALUES ($1, $2, $3, $4);
-    ''', tg_id, name, reg_key, reward_size)
+            await connection.execute('''
+                INSERT INTO vip_users (
+                tg_id, viz_account, regular_key, reward_size
+                )
+                VALUES ($1, $2, $3, $4);
+            ''', tg_id, name, reg_key, reward_size)
 
-    await connection.close()
+            await connection.close()
 
-    await message.answer('Your settings are saved to database!')
+            await message.answer('Your settings are saved to database!')
 
-    await state.finish()
+            await state.finish()
+        else:
+            message.answer(
+                'Please, provide a number that is bigger (or equal) than 1'
+            )
+    except Exception:
+        await message.answer('I take only integer numbers')
 
 
 @dp.message_handler(content_types=['any'])
