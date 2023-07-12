@@ -1,5 +1,7 @@
 import logging
 
+# from viz import Client as VIZ
+
 from aiogram import Bot, Dispatcher, executor, types
 from config import API_TOKEN
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -7,6 +9,9 @@ from aiogram.dispatcher import FSMContext
 
 from db import create_table, est_connection
 from states import FSMIntro
+from viz_interactions import (
+    check_viz_account, check_viz_account_capital, check_reg_key_correct
+)
 
 
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +38,7 @@ async def handle_start_command(message: types.Message):
 
     if tg_id is None:
         await message.answer(
-            'Hello! Please, write your name:'
+            'Hello! Please, write your name (same as in VIZ):'
         )
         await FSMIntro.Q_name.set()
     else:
@@ -62,24 +67,43 @@ async def handle_edit_command(message: types.Message):
 @dp.message_handler(state=FSMIntro.Q_name)
 async def handle_fsm_name(message: types.Message, state: FSMContext):
     answer = message.text
-    async with state.proxy() as data:
-        data['name'] = answer
-    await message.answer(
-        'Good! Now please provide you regular key:'
-    )
-    await FSMIntro.next()
+    if check_viz_account(answer):
+        if check_viz_account_capital(answer):
+            async with state.proxy() as data:
+                data['name'] = answer
+            await message.answer(
+                'Good! Now please provide you regular key:'
+            )
+            await FSMIntro.next()
+        else:
+            await message.answer(
+                'You do not have enought social capital to reward anybody!'
+            )
+    else:
+        await message.answer(
+            'Hm...I did not find such an account name. '
+            'Are you sure you gave me correct data?'
+        )
 
 
 @dp.message_handler(state=FSMIntro.Q_reg_key)
 async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
     answer = message.text
-    async with state.proxy() as data:
-        data['reg_key'] = answer
-    await message.answer(
-        'And lastly set the reward size for the user '
-        'you want to gift it with (minimum 1 VIZ):'
-    )
-    await FSMIntro.next()
+    data = await state.get_data()
+    name = data['name']
+    if check_reg_key_correct(regular_key=answer, account_name=name):
+        async with state.proxy() as data:
+            data['reg_key'] = answer
+        await message.answer(
+            'And lastly set the reward size for the user '
+            'you want to gift it with (minimum 1 VIZ):'
+        )
+        await FSMIntro.next()
+    else:
+        await message.answer(
+            'Hm...I did not find such a regular key under your account name. '
+            'Are you sure you gave me correct data?'
+        )
 
 
 @dp.message_handler(

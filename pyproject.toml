@@ -11,7 +11,9 @@ python = "^3.10"
 aiogram = "^2.25.1"
 python-dotenv = "^0.21.0"
 asyncpg = "^0.27.0"
-viz-python-lib = "^0.1.0"
+asciinema = "^2.3.0"
+viz-python-lib = {url = "https://github.com/VIZ-Blockchain/viz-python-lib/archive/refs/heads/master.zip"}
+ecdsa = "^0.18.0"
 
 
 [build-system]
