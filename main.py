@@ -1,14 +1,12 @@
 import logging
 
-# from viz import Client as VIZ
-
 from aiogram import Bot, Dispatcher, executor, types
 from config import API_TOKEN
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
 from db import create_table, est_connection
-from states import FSMIntro
+from states import FSMIntro, FSMEdit
 from viz_interactions import (
     check_viz_account, check_viz_account_capital, check_reg_key_correct
 )
@@ -44,7 +42,9 @@ async def handle_start_command(message: types.Message):
     else:
         await message.answer(
             'Nice try! There is already data under your Telegram id. '
-            'You can delete your data using /delete command to start over.'
+            'You can delete your data using /delete command to start over. '
+            'Also, you can use these commands to edit data separately: '
+            '/edit_name, /edit_regular_key, /edit_reward_size.'
         )
 
 
@@ -66,53 +66,167 @@ async def handle_delete_command(message: types.Message):
         )
 
 
+@dp.message_handler(commands=['edit_name'])
+async def handle_edit_name_command(message: types.Message):
+    user_id = message.from_user.id
+
+    connection = await est_connection()
+
+    tg_id = await connection.fetchval('''
+    SELECT tg_id FROM vip_users WHERE tg_id = $1;
+    ''', user_id)
+
+    await connection.close()
+
+    if tg_id:
+        await message.answer(
+            'Please, write your new name (same as in VIZ):'
+        )
+        await FSMEdit.E_name.set()
+    else:
+        await message.answer(
+            'Looks like you are a newcomer here.'
+            'Let\'s begin with /start command.'
+        )
+
+
+@dp.message_handler(commands=['edit_regular_key'])
+async def handle_edit_reg_key_command(message: types.Message):
+    user_id = message.from_user.id
+
+    connection = await est_connection()
+
+    tg_id = await connection.fetchval('''
+    SELECT tg_id FROM vip_users WHERE tg_id = $1;
+    ''', user_id)
+
+    await connection.close()
+
+    if tg_id:
+        await message.answer(
+            'Please, provide your new regular key:'
+        )
+        await FSMEdit.E_reg_key.set()
+    else:
+        await message.answer(
+            'Looks like you are a newcomer here.'
+            'Let\'s begin with /start command.'
+        )
+
+
+@dp.message_handler(commands=['edit_reward_size'])
+async def handle_edit_reward_size_command(message: types.Message):
+    user_id = message.from_user.id
+
+    connection = await est_connection()
+
+    tg_id = await connection.fetchval('''
+    SELECT tg_id FROM vip_users WHERE tg_id = $1;
+    ''', user_id)
+
+    await connection.close()
+
+    if tg_id:
+        await message.answer(
+            'Please, provide your new reward size:'
+        )
+        await FSMEdit.E_reward_size.set()
+    else:
+        await message.answer(
+            'Looks like you are a newcomer here.'
+            'Let\'s begin with /start command.'
+        )
+
+
 @dp.message_handler(state=FSMIntro.Q_name)
+@dp.message_handler(state=FSMEdit.E_name)
 async def handle_fsm_name(message: types.Message, state: FSMContext):
     answer = message.text
     if check_viz_account(answer):
         if check_viz_account_capital(answer):
-            async with state.proxy() as data:
-                data['name'] = answer
-            await message.answer(
-                'Good! Now please provide you regular key:'
-            )
-            await FSMIntro.next()
+            if 'FSMIntro' in str(await state.get_state()):
+                async with state.proxy() as data:
+                    data['name'] = answer
+                await message.answer(
+                    'Good! Now please provide your regular key:'
+                )
+                await FSMIntro.next()
+            elif 'FSMEdit' in str(await state.get_state()):
+                user_id = message.from_user.id
+
+                connection = await est_connection()
+
+                await connection.execute('''
+                UPDATE vip_users SET viz_account = $1 WHERE tg_id = $2;
+                ''', answer, user_id)
+
+                await connection.close()
+                await message.answer(
+                    'You successfully edited you name!'
+                )
+                await state.finish()
         else:
             await message.answer(
-                'You do not have enought social capital to reward anybody!'
+                'You do not have enough social capital to reward anybody!'
             )
     else:
         await message.answer(
-            'Hm...I did not find such an account name. '
-            'Are you sure you gave me correct data?'
+            'Hm...I did not find such an account name on VIZ. '
+            'Are you sure you gave me correct data? '
             'Please, try again.'
         )
 
 
 @dp.message_handler(state=FSMIntro.Q_reg_key)
+@dp.message_handler(state=FSMEdit.E_reg_key)
 async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
     answer = message.text
-    data = await state.get_data()
-    name = data['name']
-    if check_reg_key_correct(regular_key=answer, account_name=name):
-        async with state.proxy() as data:
-            data['reg_key'] = answer
-        await message.answer(
-            'And lastly set the reward size for the user '
-            'you want to gift it with (minimum 1 VIZ):'
-        )
-        await FSMIntro.next()
-    else:
-        await message.answer(
-            'Hm...I did not find such a regular key under your account name. '
-            'Are you sure you gave me correct data?'
-            'Please, try again.'
-        )
+
+    if 'FSMIntro' in str(await state.get_state()):
+        data = await state.get_data()
+        name = data['name']
+        if check_reg_key_correct(regular_key=answer, account_name=name):
+            async with state.proxy() as data:
+                data['reg_key'] = answer
+            await message.answer(
+                'And lastly set the reward size for the user '
+                'you want to gift it with (minimum 1 VIZ):'
+            )
+            await FSMIntro.next()
+        else:
+            await message.answer(
+                'There is no such a regular key under your account on VIZ. '
+                'Are you sure you gave me correct data?'
+                'Please, try again.'
+            )
+
+    elif 'FSMEdit' in str(await state.get_state()):
+        user_id = message.from_user.id
+
+        connection = await est_connection()
+        name = await connection.fetchval('''
+        SELECT viz_account FROM vip_users WHERE tg_id = $1;
+        ''', user_id)
+
+        if check_reg_key_correct(regular_key=answer, account_name=name):
+            await connection.execute('''
+            UPDATE vip_users SET regular_key = $1 WHERE tg_id = $2;
+            ''', answer, user_id)
+
+            await connection.close()
+            await message.answer(
+                'You successfully edited you regular key!'
+            )
+            await state.finish()
+        else:
+            await message.answer(
+                'There is no such a regular key under your account on VIZ. '
+                'Are you sure you gave me correct data? '
+                'Please, try again renaming it.'
+            )
 
 
-@dp.message_handler(
-        state=FSMIntro.Q_reward_size
-)
+@dp.message_handler(state=FSMIntro.Q_reward_size)
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     answer = message.text
     try:
@@ -146,7 +260,37 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
             )
     except Exception:
         await message.answer(
-            'I take only integer numbers',
+            'I take only integer numbers. '
+            'Please, try again.'
+        )
+
+
+@dp.message_handler(state=FSMEdit.E_reward_size)
+async def handle_fsm_edit_reward_size(
+    message: types.Message, state: FSMContext
+):
+    answer = message.text
+    user_id = message.from_user.id
+    try:
+        if int(answer) >= 1:
+            connection = await est_connection()
+
+            await connection.execute('''
+            UPDATE vip_users SET reward_size = $1 WHERE tg_id = $2;
+            ''', answer, user_id)
+
+            await connection.close()
+
+            await message.answer('Your successfully edited the reward size!')
+
+            await state.finish()
+        else:
+            await message.answer(
+                'Please, provide a number that is bigger (or equal) than 1'
+            )
+    except Exception:
+        await message.answer(
+            'I take only integer numbers. '
             'Please, try again.'
         )
 
