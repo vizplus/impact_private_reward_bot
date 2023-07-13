@@ -44,11 +44,11 @@ async def handle_start_command(message: types.Message):
     else:
         await message.answer(
             'Nice try! There is already data under your Telegram id. '
-            'You can edit your data using /edit command.'
+            'You can delete your data using /delete command to start over.'
         )
 
 
-@dp.message_handler(commands=['edit'])
+@dp.message_handler(commands=['delete'])
 async def handle_edit_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -83,6 +83,7 @@ async def handle_fsm_name(message: types.Message, state: FSMContext):
         await message.answer(
             'Hm...I did not find such an account name. '
             'Are you sure you gave me correct data?'
+            'Please, try again.'
         )
 
 
@@ -103,6 +104,7 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
         await message.answer(
             'Hm...I did not find such a regular key under your account name. '
             'Are you sure you gave me correct data?'
+            'Please, try again.'
         )
 
 
@@ -112,7 +114,7 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     answer = message.text
     try:
-        if int(answer) > 1:
+        if int(answer) >= 1:
             async with state.proxy() as data:
                 data['reward_size'] = answer
 
@@ -137,11 +139,14 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
 
             await state.finish()
         else:
-            message.answer(
+            await message.answer(
                 'Please, provide a number that is bigger (or equal) than 1'
             )
     except Exception:
-        await message.answer('I take only integer numbers')
+        await message.answer(
+            'I take only integer numbers',
+            'Please, try again.'
+        )
 
 
 @dp.message_handler(content_types=['any'])
