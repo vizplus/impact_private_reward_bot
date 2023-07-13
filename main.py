@@ -49,7 +49,7 @@ async def handle_start_command(message: types.Message):
 
 
 @dp.message_handler(commands=['delete'])
-async def handle_edit_command(message: types.Message):
+async def handle_delete_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -57,6 +57,8 @@ async def handle_edit_command(message: types.Message):
     await connection.execute('''
     DELETE FROM vip_users WHERE tg_id = $1;
     ''', user_id)
+
+    await connection.close()
 
     await message.answer(
         'OK, you deleted your data. '
