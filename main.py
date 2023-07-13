@@ -138,6 +138,53 @@ async def handle_edit_reward_size_command(message: types.Message):
         )
 
 
+@dp.message_handler(commands=['show'])
+async def handle_show_command(message: types.Message):
+    user_id = message.from_user.id
+
+    connection = await est_connection()
+
+    data = await connection.fetchrow('''
+    SELECT * FROM vip_users WHERE tg_id = $1;
+    ''', user_id)
+
+    await connection.close()
+    data_name = list(data.values())[2]
+    data_reg_key = list(data.values())[3]
+    data_reward_size = list(data.values())[4]
+
+    await message.answer(
+            f'Name: <b>{data_name}</b>\n'
+            f'Regular key: <b>{data_reg_key}</b>\n'
+            f'Reward size: <b>{data_reward_size}</b>.',
+            parse_mode='html'
+        )
+
+
+@dp.message_handler(commands=['help'])
+async def handle_help_command(message: types.Message):
+    await message.answer(
+            'This bot is created for VIP VIZ-blockchain users. '
+            'If you are one of them, you can start using it by '
+            'providing your account name, regular key and reward size. '
+            'Once you\'ve done with that, you are allowed to forward any '
+            'messages from other users who you want to reward with VIZ-token. '
+            'Type /start to begin using this bot.\n'
+            'The list of available commands:\n'
+            '/start - Start interacting with the bot\n'
+            '/delete - Delete the data (name, regular key and reward size) '
+            'you provided previously\n'
+            '/edit_name - Edit your name\n'
+            '/edit_regular_key - Edit your regular key\n'
+            '/edit_reward_size - Edit your reward size\n'
+            '/help - Shows the bot description '
+            'and the set of available commands\n'
+            '/exit - Exit interacting with the bot\n'
+            '/show - Shows the data (name, regular key '
+            'and reward size) you provided previously'
+        )
+
+
 @dp.message_handler(state=FSMIntro.Q_name)
 @dp.message_handler(state=FSMEdit.E_name)
 async def handle_fsm_name(message: types.Message, state: FSMContext):
