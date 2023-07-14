@@ -7,6 +7,7 @@ from aiogram.dispatcher import FSMContext
 
 from db import create_table, est_connection
 from states import FSMIntro, FSMEdit
+from keyboards import k_b, k_b_exit
 from viz_interactions import (
     check_viz_account, check_viz_account_capital, check_reg_key_correct
 )
@@ -36,7 +37,8 @@ async def handle_start_command(message: types.Message):
 
     if tg_id is None:
         await message.answer(
-            'Hello! Please, write your name (same as in VIZ):'
+            'Hello! Please, write your name (same as in VIZ):',
+            reply_markup=k_b_exit
         )
         await FSMIntro.Q_name.set()
     else:
@@ -44,8 +46,22 @@ async def handle_start_command(message: types.Message):
             'Nice try! There is already data under your Telegram id. '
             'You can delete your data using /delete command to start over. '
             'Also, you can use these commands to edit data separately: '
-            '/edit_name, /edit_regular_key, /edit_reward_size.'
+            '/edit_name, /edit_regular_key, /edit_reward_size.',
+            reply_markup=k_b
         )
+
+
+@dp.message_handler(commands=['exit'], state='*')
+async def handle_exit_command(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+    await state.finish()
+    await message.answer(
+        'You cancelled filling the form. '
+        'You can start from the beginning using /start command.',
+        reply_markup=k_b
+    )
 
 
 @dp.message_handler(commands=['delete'])
@@ -54,15 +70,28 @@ async def handle_delete_command(message: types.Message):
 
     connection = await est_connection()
 
-    await connection.execute('''
-    DELETE FROM vip_users WHERE tg_id = $1;
+    data = await connection.fetchval('''
+    SELECT * FROM vip_users WHERE tg_id = $1;
     ''', user_id)
 
-    await connection.close()
+    if data:
+        await connection.execute('''
+        DELETE FROM vip_users WHERE tg_id = $1;
+        ''', user_id)
 
-    await message.answer(
-        'OK, you deleted your data. '
-        'Now rewrite your data using /start command'
+        await connection.close()
+
+        await message.answer(
+            'OK, you deleted your data. '
+            'Now rewrite your data using /start command',
+            reply_markup=k_b
+            )
+        
+    else:
+        await message.answer(
+            'Looks like you are a newcomer here. '
+            'Let\'s begin with /start command.',
+            reply_markup=k_b
         )
 
 
@@ -80,13 +109,15 @@ async def handle_edit_name_command(message: types.Message):
 
     if tg_id:
         await message.answer(
-            'Please, write your new name (same as in VIZ):'
+            'Please, write your new name (same as in VIZ):',
+            reply_markup=k_b_exit
         )
         await FSMEdit.E_name.set()
     else:
         await message.answer(
-            'Looks like you are a newcomer here.'
-            'Let\'s begin with /start command.'
+            'Looks like you are a newcomer here. '
+            'Let\'s begin with /start command.',
+            reply_markup=k_b
         )
 
 
@@ -104,13 +135,15 @@ async def handle_edit_reg_key_command(message: types.Message):
 
     if tg_id:
         await message.answer(
-            'Please, provide your new regular key:'
+            'Please, provide your new regular key:',
+            reply_markup=k_b_exit
         )
         await FSMEdit.E_reg_key.set()
     else:
         await message.answer(
-            'Looks like you are a newcomer here.'
-            'Let\'s begin with /start command.'
+            'Looks like you are a newcomer here. '
+            'Let\'s begin with /start command.',
+            reply_markup=k_b
         )
 
 
@@ -128,13 +161,15 @@ async def handle_edit_reward_size_command(message: types.Message):
 
     if tg_id:
         await message.answer(
-            'Please, provide your new reward size:'
+            'Please, provide your new reward size:',
+            reply_markup=k_b_exit
         )
         await FSMEdit.E_reward_size.set()
     else:
         await message.answer(
-            'Looks like you are a newcomer here.'
-            'Let\'s begin with /start command.'
+            'Looks like you are a newcomer here. '
+            'Let\'s begin with /start command.',
+            reply_markup=k_b
         )
 
 
@@ -149,15 +184,24 @@ async def handle_show_command(message: types.Message):
     ''', user_id)
 
     await connection.close()
-    data_name = list(data.values())[2]
-    data_reg_key = list(data.values())[3]
-    data_reward_size = list(data.values())[4]
 
-    await message.answer(
-            f'Name: <b>{data_name}</b>\n'
-            f'Regular key: <b>{data_reg_key}</b>\n'
-            f'Reward size: <b>{data_reward_size}</b>.',
-            parse_mode='html'
+    if data:
+        data_name = list(data.values())[2]
+        data_reg_key = list(data.values())[3]
+        data_reward_size = list(data.values())[4]
+
+        await message.answer(
+                f'Name: <b>{data_name}</b>\n'
+                f'Regular key: <b>{data_reg_key}</b>\n'
+                f'Reward size: <b>{data_reward_size}</b>.',
+                parse_mode='html',
+                reply_markup=k_b
+            )
+    else:
+        await message.answer(
+            'Looks like you are a newcomer here. '
+            'Let\'s begin with /start command.',
+            reply_markup=k_b
         )
 
 
@@ -179,9 +223,10 @@ async def handle_help_command(message: types.Message):
             '/edit_reward_size - Edit your reward size\n'
             '/help - Shows the bot description '
             'and the set of available commands\n'
-            '/exit - Exit interacting with the bot\n'
+            '/exit - Cancel filling a form\n'
             '/show - Shows the data (name, regular key '
-            'and reward size) you provided previously'
+            'and reward size) you provided previously',
+            reply_markup=k_b
         )
 
 
@@ -195,7 +240,8 @@ async def handle_fsm_name(message: types.Message, state: FSMContext):
                 async with state.proxy() as data:
                     data['name'] = answer
                 await message.answer(
-                    'Good! Now please provide your regular key:'
+                    'Good! Now please provide your regular key:',
+                    reply_markup=k_b_exit
                 )
                 await FSMIntro.next()
             elif 'FSMEdit' in str(await state.get_state()):
@@ -209,18 +255,21 @@ async def handle_fsm_name(message: types.Message, state: FSMContext):
 
                 await connection.close()
                 await message.answer(
-                    'You successfully edited you name!'
+                    'You successfully edited your name!',
+                    reply_markup=k_b
                 )
                 await state.finish()
         else:
             await message.answer(
-                'You do not have enough social capital to reward anybody!'
+                'You do not have enough social capital to reward anybody!',
+                reply_markup=k_b_exit
             )
     else:
         await message.answer(
             'Hm...I did not find such an account name on VIZ. '
             'Are you sure you gave me correct data? '
-            'Please, try again.'
+            'Please, try again.',
+            reply_markup=k_b_exit
         )
 
 
@@ -237,14 +286,16 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
                 data['reg_key'] = answer
             await message.answer(
                 'And lastly set the reward size for the user '
-                'you want to gift it with (minimum 1 VIZ):'
+                'you want to gift it with (minimum 1 VIZ):',
+                reply_markup=k_b_exit
             )
             await FSMIntro.next()
         else:
             await message.answer(
                 'There is no such a regular key under your account on VIZ. '
                 'Are you sure you gave me correct data?'
-                'Please, try again.'
+                'Please, try again.',
+                reply_markup=k_b_exit
             )
 
     elif 'FSMEdit' in str(await state.get_state()):
@@ -262,14 +313,16 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 
             await connection.close()
             await message.answer(
-                'You successfully edited you regular key!'
+                'You successfully edited you regular key!', 
+                reply_markup=k_b
             )
             await state.finish()
         else:
             await message.answer(
                 'There is no such a regular key under your account on VIZ. '
                 'Are you sure you gave me correct data? '
-                'Please, try again renaming it.'
+                'Please, try again renaming it.',
+                reply_markup=k_b_exit
             )
 
 
@@ -298,17 +351,21 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
 
             await connection.close()
 
-            await message.answer('Your settings are saved to database!')
+            await message.answer(
+                'Your settings are saved to database!', reply_markup=k_b
+            )
 
             await state.finish()
         else:
             await message.answer(
-                'Please, provide a number that is bigger (or equal) than 1'
+                'Please, provide a number that is bigger (or equal) than 1',
+                reply_markup=k_b_exit
             )
     except Exception:
         await message.answer(
             'I take only integer numbers. '
-            'Please, try again.'
+            'Please, try again.',
+            reply_markup=k_b_exit
         )
 
 
@@ -328,17 +385,22 @@ async def handle_fsm_edit_reward_size(
 
             await connection.close()
 
-            await message.answer('Your successfully edited the reward size!')
+            await message.answer(
+                'Your successfully edited the reward size!',
+                reply_markup=k_b
+            )
 
             await state.finish()
         else:
             await message.answer(
-                'Please, provide a number that is bigger (or equal) than 1'
+                'Please, provide a number that is bigger (or equal) than 1',
+                reply_markup=k_b
             )
     except Exception:
         await message.answer(
             'I take only integer numbers. '
-            'Please, try again.'
+            'Please, try again.',
+            reply_markup=k_b_exit
         )
 
 
@@ -350,7 +412,9 @@ async def handle_forwarded_text_msgs(message: types.Message):
 
     if user_id != author_id:
         if message.forward_from.is_bot:
-            return await message.answer('You cannot reward a bot 🤷‍♂️')
+            return await message.answer(
+                'You cannot reward a bot 🤷‍♂️', reply_markup=k_b
+            )
 
         message_text = f'\'{message.text[:50]}\'' if message.text\
             else 'THE FORWARDED MESSAGE DOES NOT CONTAIN TEXT'
@@ -369,19 +433,24 @@ async def handle_forwarded_text_msgs(message: types.Message):
                 f'with {reward_size[0]} VIZ\n'
                 f'The text from the forwarded message is:\n'
                 f'<em>{message_text}...</em>',
-                parse_mode='html'
+                parse_mode='html',
+                reply_markup=k_b
             )
         elif not reward_size:
             await message.answer(
                 'You did not provide required data for me '
                 'to handle forwarded messages. '
-                'Use /start command to fix that.'
+                'Use /start command to fix that.',
+                reply_markup=k_b
             )
     elif message.forward_from_chat and message.forward_from is None:
-        await message.answer('You cannot reward a channel 🤷‍♂️')
+        await message.answer(
+            'You cannot reward a channel 🤷‍♂️', reply_markup=k_b
+        )
     elif message.forward_from is None:
         await message.answer(
-            'You cannot reward the sender of this message!'
+            'You cannot reward the sender of this message!',
+            reply_markup=k_b
         )
 
 
