@@ -54,7 +54,8 @@ def check_reg_key_correct(regular_key: str, account_name: str) -> bool:
             regular_key, prefix='VIZ'
         )
         acc = Account(
-                account_name=account_name, blockchain_instance=Client(node=node)
+                account_name=account_name,
+                blockchain_instance=Client(node=node)
             )
         items = dict(acc.items())
         str_pubkey = str(public.pubkey)
@@ -62,14 +63,3 @@ def check_reg_key_correct(regular_key: str, account_name: str) -> bool:
         return str_pubkey == public_reg_key
     except Exception:
         return False
-    
-
-# def check_reg_key_correct(reward_size: str) -> bool:
-#     '''
-#     Provide reward size.
-#     Returns True if it's a number that more than 1.
-
-#     :param str reward_size: Size of the set reward
-#     '''
-#     try:
-#         int(reward_size)
