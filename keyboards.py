@@ -1,6 +1,4 @@
-from aiogram.types import (
-    ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
-)
+from aiogram.types import ReplyKeyboardMarkup
 
 
 k_b = ReplyKeyboardMarkup(resize_keyboard=True)
@@ -17,7 +15,7 @@ kb_show = 'Status'
 
 kb_exit = 'Back'
 
-kb_yes = 'Yes'
+kb_yes_del = 'Delete'
 kb_no = 'No'
 
 # k_b.add(kb_start)  # remove big Start button from the kb
@@ -26,5 +24,5 @@ k_b.row(kb_help, kb_show, kb_delete)
 
 k_b_exit.add(kb_exit)
 
-k_b_deletion.add(kb_yes)
+k_b_deletion.add(kb_yes_del)
 k_b_deletion.add(kb_exit)
