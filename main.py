@@ -97,7 +97,7 @@ async def handle_delete_command(message: types.Message):
 
 
 @dp.message_handler(
-    lambda msg: msg.text and 'yes' in msg.text.lower(),
+    lambda msg: msg.text and 'delete' in msg.text.lower(),
     state=FSMDelete.Accept_deletion
 )
 async def handle_yes_delete_command(message: types.Message):
