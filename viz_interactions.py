@@ -35,7 +35,7 @@ def check_viz_account_capital(account_name: str) -> bool:
     acc_rvs = float(acc['received_vesting_shares'].split()[0])
     acc_dvs = float(acc['delegated_vesting_shares'].split()[0])
     acc_capital = acc_vs + acc_rvs - acc_dvs
-    if acc_capital >= 1:
+    if acc_capital >= 25000:
         return True
     else:
         return False

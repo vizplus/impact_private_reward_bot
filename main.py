@@ -6,8 +6,8 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
 from db import create_table, est_connection
-from states import FSMIntro, FSMEdit
-from keyboards import k_b, k_b_exit
+from states import FSMIntro, FSMEdit, FSMDelete
+from keyboards import k_b, k_b_exit, k_b_deletion
 from viz_interactions import (
     check_viz_account, check_viz_account_capital, check_reg_key_correct
 )
@@ -22,6 +22,7 @@ dp = Dispatcher(bot, storage=storage)
 
 
 @dp.message_handler(commands=['start'])
+@dp.message_handler(lambda msg: msg.text and 'start' in msg.text.lower())
 async def handle_start_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -46,12 +47,16 @@ async def handle_start_command(message: types.Message):
             'Nice try! There is already data under your Telegram id. '
             'You can delete your data using /delete command to start over. '
             'Also, you can use these commands to edit data separately: '
-            '/edit_name, /edit_regular_key, /edit_reward_size.',
+            '/name, /key, /reward.',
             reply_markup=k_b
         )
 
 
-@dp.message_handler(commands=['exit'], state='*')
+@dp.message_handler(commands=['back'], state='*')
+@dp.message_handler(
+    lambda msg: msg.text and 'back' in msg.text.lower(),
+    state='*'
+)
 async def handle_exit_command(message: types.Message, state: FSMContext):
     current_state = await state.get_state()
     if current_state is None:
@@ -65,6 +70,7 @@ async def handle_exit_command(message: types.Message, state: FSMContext):
 
 
 @dp.message_handler(commands=['delete'])
+@dp.message_handler(lambda msg: msg.text and 'delete' in msg.text.lower())
 async def handle_delete_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -73,19 +79,14 @@ async def handle_delete_command(message: types.Message):
     data = await connection.fetchval('''
     SELECT * FROM vip_users WHERE tg_id = $1;
     ''', user_id)
+    await connection.close()
 
     if data:
-        await connection.execute('''
-        DELETE FROM vip_users WHERE tg_id = $1;
-        ''', user_id)
-
-        await connection.close()
-
+        await FSMDelete.Accept_deletion.set()
         await message.answer(
-            'OK, you deleted your data. '
-            'Now rewrite your data using /start command',
-            reply_markup=k_b
-            )
+            'Are you sure you want to delete your account data?',
+            reply_markup=k_b_deletion
+        )
 
     else:
         await message.answer(
@@ -95,7 +96,42 @@ async def handle_delete_command(message: types.Message):
         )
 
 
-@dp.message_handler(commands=['edit_name'])
+@dp.message_handler(
+    lambda msg: msg.text and 'yes' in msg.text.lower(),
+    state=FSMDelete.Accept_deletion
+)
+async def handle_yes_delete_command(message: types.Message):
+    user_id = message.from_user.id
+    connection = await est_connection()
+    await connection.execute('''
+    DELETE FROM vip_users WHERE tg_id = $1;
+    ''', user_id)
+
+    await connection.close()
+
+    await message.answer(
+        'OK, you deleted your data. '
+        'Now rewrite your data using /start command',
+        reply_markup=k_b
+        )
+
+
+@dp.message_handler(
+    lambda msg: msg.text and 'no' in msg.text.lower(),
+    state=FSMDelete.Accept_deletion
+)
+async def handle_no_delete_command(message: types.Message, state: FSMContext):
+    await state.finish()
+    await message.answer(
+        'You cancelled deleting your data.',
+        reply_markup=k_b
+    )
+
+
+@dp.message_handler(commands=['name'])
+@dp.message_handler(
+    lambda msg: msg.text and 'name' in msg.text.lower()
+)
 async def handle_edit_name_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -121,7 +157,10 @@ async def handle_edit_name_command(message: types.Message):
         )
 
 
-@dp.message_handler(commands=['edit_regular_key'])
+@dp.message_handler(commands=['key'])
+@dp.message_handler(
+    lambda msg: msg.text and 'key' in msg.text.lower()
+)
 async def handle_edit_reg_key_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -147,7 +186,10 @@ async def handle_edit_reg_key_command(message: types.Message):
         )
 
 
-@dp.message_handler(commands=['edit_reward_size'])
+@dp.message_handler(commands=['reward'])
+@dp.message_handler(
+    lambda msg: msg.text and 'reward' in msg.text.lower()
+)
 async def handle_edit_reward_size_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -173,7 +215,8 @@ async def handle_edit_reward_size_command(message: types.Message):
         )
 
 
-@dp.message_handler(commands=['show'])
+@dp.message_handler(commands=['status'])
+@dp.message_handler(lambda msg: msg.text and 'status' in msg.text.lower())
 async def handle_show_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -190,10 +233,11 @@ async def handle_show_command(message: types.Message):
         data_reg_key = list(data.values())[3]
         data_reward_size = list(data.values())[4]
 
+        # check last change
         await message.answer(
                 f'Name: <b>{data_name}</b>\n'
-                f'Regular key: <b>{data_reg_key}</b>\n'
-                f'Reward size: <b>{data_reward_size}</b>.',
+                f'Regular key: <b>{data_reg_key[:5]}</b>...\n'
+                f'Reward size: <b>{data_reward_size}</b>',
                 parse_mode='html',
                 reply_markup=k_b
             )
@@ -206,6 +250,7 @@ async def handle_show_command(message: types.Message):
 
 
 @dp.message_handler(commands=['help'])
+@dp.message_handler(lambda msg: msg.text and 'help' in msg.text.lower())
 async def handle_help_command(message: types.Message):
     await message.answer(
             'This bot is created for VIP VIZ-blockchain users. '
@@ -218,13 +263,13 @@ async def handle_help_command(message: types.Message):
             '/start - Start interacting with the bot\n'
             '/delete - Delete the data (name, regular key and reward size) '
             'you provided previously\n'
-            '/edit_name - Edit your name\n'
-            '/edit_regular_key - Edit your regular key\n'
-            '/edit_reward_size - Edit your reward size\n'
+            '/name - Edit your name\n'
+            '/key - Edit your regular key\n'
+            '/reward - Edit your reward size\n'
             '/help - Shows the bot description '
             'and the set of available commands\n'
-            '/exit - Cancel filling a form\n'
-            '/show - Shows the data (name, regular key '
+            '/back - Cancel filling a form\n'
+            '/status - Shows the data (name, regular key '
             'and reward size) you provided previously',
             reply_markup=k_b
         )
@@ -281,11 +326,18 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=FSMIntro.Q_reward_size)
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
-    answer = message.text
+    raw_answer = message.text
+    # right answer after substituting ',' to '.' and cleaning from ' '
+    answer = raw_answer.replace(',', '.').replace(' ', '')
+    parts = answer.split('.')
+
     try:
-        if int(answer) >= 1:
+        first_part = parts[0]
+        second_part = parts[1][0]
+        rounded_num = f'{first_part}.{second_part}'
+        if float(rounded_num) >= 1:
             async with state.proxy() as data:
-                data['reward_size'] = answer
+                data['reward_size'] = rounded_num
 
             data = await state.get_data()
             tg_id = message.from_user.id
@@ -316,7 +368,7 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
             )
     except Exception:
         await message.answer(
-            'I take only integer numbers. '
+            'I take only integer or decimal numbers. '
             'Please, try again.',
             reply_markup=k_b_exit
         )
@@ -410,15 +462,22 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
 async def handle_fsm_edit_reward_size(
     message: types.Message, state: FSMContext
 ):
-    answer = message.text
+    raw_answer = message.text
     user_id = message.from_user.id
+    # right answer after substituting ',' to '.' and cleaning from ' '
+    answer = raw_answer.replace(',', '.').replace(' ', '')
+    parts = answer.split('.')
+
     try:
-        if int(answer) >= 1:
+        first_part = parts[0]
+        second_part = parts[1][0]
+        rounded_num = f'{first_part}.{second_part}'
+        if float(rounded_num) >= 1:
             connection = await est_connection()
 
             await connection.execute('''
             UPDATE vip_users SET reward_size = $1 WHERE tg_id = $2;
-            ''', answer, user_id)
+            ''', rounded_num, user_id)
 
             await connection.close()
 
@@ -431,11 +490,11 @@ async def handle_fsm_edit_reward_size(
         else:
             await message.answer(
                 'Please, provide a number that is bigger (or equal) than 1',
-                reply_markup=k_b
+                reply_markup=k_b_exit
             )
     except Exception:
         await message.answer(
-            'I take only integer numbers. '
+            'I take only integer or decimal numbers. '
             'Please, try again.',
             reply_markup=k_b_exit
         )
