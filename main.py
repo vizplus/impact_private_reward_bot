@@ -20,6 +20,9 @@ storage = MemoryStorage()
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
+newcomer_msg = 'Looks like you are a newcomer here. \
+Let\'s begin with /start command.'
+
 
 @dp.message_handler(commands=['start'])
 @dp.message_handler(lambda msg: msg.text and 'start' in msg.text.lower())
@@ -90,8 +93,7 @@ async def handle_delete_command(message: types.Message):
 
     else:
         await message.answer(
-            'Looks like you are a newcomer here. '
-            'Let\'s begin with /start command.',
+            newcomer_msg,
             reply_markup=k_b
         )
 
@@ -151,8 +153,7 @@ async def handle_edit_name_command(message: types.Message):
         await FSMEdit.E_name.set()
     else:
         await message.answer(
-            'Looks like you are a newcomer here. '
-            'Let\'s begin with /start command.',
+            newcomer_msg,
             reply_markup=k_b
         )
 
@@ -180,8 +181,7 @@ async def handle_edit_reg_key_command(message: types.Message):
         await FSMEdit.E_reg_key.set()
     else:
         await message.answer(
-            'Looks like you are a newcomer here. '
-            'Let\'s begin with /start command.',
+            newcomer_msg,
             reply_markup=k_b
         )
 
@@ -209,8 +209,7 @@ async def handle_edit_reward_size_command(message: types.Message):
         await FSMEdit.E_reward_size.set()
     else:
         await message.answer(
-            'Looks like you are a newcomer here. '
-            'Let\'s begin with /start command.',
+            newcomer_msg,
             reply_markup=k_b
         )
 
@@ -243,8 +242,7 @@ async def handle_show_command(message: types.Message):
             )
     else:
         await message.answer(
-            'Looks like you are a newcomer here. '
-            'Let\'s begin with /start command.',
+            newcomer_msg,
             reply_markup=k_b
         )
 
