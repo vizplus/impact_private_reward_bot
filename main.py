@@ -20,8 +20,15 @@ storage = MemoryStorage()
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
-newcomer_msg = 'Looks like you are a newcomer here. \
+# Constants
+NEWCOMER_MSG = 'Looks like you are a newcomer here. \
 Let\'s begin with /start command.'
+KEY_NOT_FOUND = 'There is no such a regular key under your account on VIZ. \
+Are you sure you gave me correct data? \
+Please, try again.'
+VIZ_NAME_NOT_FOUND = 'Hm...I did not find such an account name on VIZ. \
+Are you sure you gave me correct data? \
+Please, try again.'
 
 
 @dp.message_handler(commands=['start'])
@@ -93,7 +100,7 @@ async def handle_delete_command(message: types.Message):
 
     else:
         await message.answer(
-            newcomer_msg,
+            NEWCOMER_MSG,
             reply_markup=k_b
         )
 
@@ -153,7 +160,7 @@ async def handle_edit_name_command(message: types.Message):
         await FSMEdit.E_name.set()
     else:
         await message.answer(
-            newcomer_msg,
+            NEWCOMER_MSG,
             reply_markup=k_b
         )
 
@@ -181,7 +188,7 @@ async def handle_edit_reg_key_command(message: types.Message):
         await FSMEdit.E_reg_key.set()
     else:
         await message.answer(
-            newcomer_msg,
+            NEWCOMER_MSG,
             reply_markup=k_b
         )
 
@@ -209,7 +216,7 @@ async def handle_edit_reward_size_command(message: types.Message):
         await FSMEdit.E_reward_size.set()
     else:
         await message.answer(
-            newcomer_msg,
+            NEWCOMER_MSG,
             reply_markup=k_b
         )
 
@@ -242,7 +249,7 @@ async def handle_show_command(message: types.Message):
             )
     else:
         await message.answer(
-            newcomer_msg,
+            NEWCOMER_MSG,
             reply_markup=k_b
         )
 
@@ -292,9 +299,7 @@ async def handle_fsm_name(message: types.Message, state: FSMContext):
             )
     else:
         await message.answer(
-            'Hm...I did not find such an account name on VIZ. '
-            'Are you sure you gave me correct data? '
-            'Please, try again.',
+            VIZ_NAME_NOT_FOUND,
             reply_markup=k_b_exit
         )
 
@@ -315,9 +320,7 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
         await FSMIntro.next()
     else:
         await message.answer(
-            'There is no such a regular key under your account on VIZ. '
-            'Are you sure you gave me correct data?'
-            'Please, try again.',
+            KEY_NOT_FOUND,
             reply_markup=k_b_exit
         )
 
@@ -391,9 +394,7 @@ async def handle_edit_name_cmd(message: types.Message, state: FSMContext):
             )
     else:
         await message.answer(
-            'Hm...I did not find such an account name on VIZ. '
-            'Are you sure you gave me correct data? '
-            'Please, try again.',
+            VIZ_NAME_NOT_FOUND,
             reply_markup=k_b_exit
         )
 
@@ -423,9 +424,7 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
             await state.finish()
         else:
             await message.answer(
-                'There is no such a regular key under your account on VIZ. '
-                'Are you sure you gave me correct data? '
-                'Please, try again renaming it.',
+                KEY_NOT_FOUND,
                 reply_markup=k_b_exit
             )
     elif not name:
@@ -450,9 +449,7 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
             await state.finish()
         else:
             await message.answer(
-                'There is no such a regular key under your account on VIZ. '
-                'Are you sure you gave me correct data? '
-                'Please, try again renaming it.',
+                KEY_NOT_FOUND,
                 reply_markup=k_b_exit)
 
 
