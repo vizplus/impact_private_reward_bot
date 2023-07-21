@@ -19,6 +19,6 @@ async def create_table(connection):
         tg_id bigint UNIQUE,
         viz_account name,
         regular_key text,
-        reward_size numeric
+        reward_size float
         )
     ''')

@@ -1,4 +1,5 @@
 import logging
+import re
 
 from aiogram import Bot, Dispatcher, executor, types
 from config import API_TOKEN
@@ -9,7 +10,10 @@ from db import create_table, est_connection
 from states import FSMIntro, FSMEdit, FSMDelete
 from keyboards import k_b, k_b_exit, k_b_deletion
 from viz_interactions import (
-    check_viz_account, check_viz_account_capital, check_reg_key_correct
+    check_viz_account,
+    check_viz_account_capital,
+    check_reg_key_correct,
+    count_vip_award_balance
 )
 
 
@@ -37,13 +41,10 @@ async def handle_start_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
-
     await create_table(connection)
-
     tg_id = await connection.fetchval('''
     SELECT tg_id FROM vip_users WHERE tg_id = $1;
     ''', user_id)
-
     await connection.close()
 
     if tg_id is None:
@@ -85,7 +86,6 @@ async def handle_delete_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
-
     data = await connection.fetchval('''
     SELECT * FROM vip_users WHERE tg_id = $1;
     ''', user_id)
@@ -111,11 +111,11 @@ async def handle_delete_command(message: types.Message):
 )
 async def handle_yes_delete_command(message: types.Message):
     user_id = message.from_user.id
+
     connection = await est_connection()
     await connection.execute('''
     DELETE FROM vip_users WHERE tg_id = $1;
     ''', user_id)
-
     await connection.close()
 
     await message.answer(
@@ -145,11 +145,9 @@ async def handle_edit_name_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
-
     tg_id = await connection.fetchval('''
     SELECT tg_id FROM vip_users WHERE tg_id = $1;
     ''', user_id)
-
     await connection.close()
 
     if tg_id:
@@ -173,11 +171,9 @@ async def handle_edit_reg_key_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
-
     tg_id = await connection.fetchval('''
     SELECT tg_id FROM vip_users WHERE tg_id = $1;
     ''', user_id)
-
     await connection.close()
 
     if tg_id:
@@ -201,11 +197,9 @@ async def handle_edit_reward_size_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
-
     tg_id = await connection.fetchval('''
     SELECT tg_id FROM vip_users WHERE tg_id = $1;
     ''', user_id)
-
     await connection.close()
 
     if tg_id:
@@ -223,15 +217,13 @@ async def handle_edit_reward_size_command(message: types.Message):
 
 @dp.message_handler(commands=['status'])
 @dp.message_handler(lambda msg: msg.text and 'status' in msg.text.lower())
-async def handle_show_command(message: types.Message):
+async def handle_status_command(message: types.Message):
     user_id = message.from_user.id
 
     connection = await est_connection()
-
     data = await connection.fetchrow('''
     SELECT * FROM vip_users WHERE tg_id = $1;
     ''', user_id)
-
     await connection.close()
 
     if data:
@@ -239,11 +231,18 @@ async def handle_show_command(message: types.Message):
         data_reg_key = list(data.values())[3]
         data_reward_size = list(data.values())[4]
 
-        # check last change
+        # if count_vip_award_balance(data_name, data_reward_size) > 0:
+        reward_balance = count_vip_award_balance(
+            data_name, data_reward_size
+        )
+        # else:
+        #     reward_balance = 0
+
         await message.answer(
                 f'Name: <b>{data_name}</b>\n'
                 f'Regular key: <b>{data_reg_key[:5]}</b>...\n'
-                f'Reward size: <b>{data_reward_size}</b>',
+                f'Reward size: <b>{data_reward_size}</b>\n'
+                f'Reward balance: <b>{reward_balance}</b>',
                 parse_mode='html',
                 reply_markup=k_b
             )
@@ -328,45 +327,33 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 @dp.message_handler(state=FSMIntro.Q_reward_size)
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     raw_answer = message.text
-    # right answer after substituting ',' to '.' and cleaning from ' '
-    answer = raw_answer.replace(',', '.').replace(' ', '')
-    parts = answer.split('.')
+    filtered_answer = re.sub(r"[^\d.,]+", "", raw_answer).replace(',', '.')
 
     try:
-        first_part = parts[0]
-        second_part = parts[1][0]
-        rounded_num = f'{first_part}.{second_part}'
-        if float(rounded_num) >= 1:
-            async with state.proxy() as data:
-                data['reward_size'] = rounded_num
+        data = await state.get_data()
+        tg_id = message.from_user.id
+        name = data.get('name')
+        reg_key = data.get('reg_key')
+        reward_size = round(float(filtered_answer), 1)
 
-            data = await state.get_data()
-            tg_id = message.from_user.id
-            name = data.get('name')
-            reg_key = data.get('reg_key')
-            reward_size = data.get('reward_size')
-
-            connection = await est_connection()
-
-            await connection.execute('''
-                INSERT INTO vip_users (
-                tg_id, viz_account, regular_key, reward_size
-                )
-                VALUES ($1, $2, $3, $4);
-            ''', tg_id, name, reg_key, reward_size)
-
-            await connection.close()
-
-            await message.answer(
-                'Your settings are saved to database!', reply_markup=k_b
+        connection = await est_connection()
+        await connection.execute('''
+            INSERT INTO vip_users (
+            tg_id, viz_account, regular_key, reward_size
             )
+            VALUES ($1, $2, $3, $4);
+        ''', tg_id, name, reg_key, reward_size)
+        await connection.close()
 
-            await state.finish()
-        else:
-            await message.answer(
-                'Please, provide a number that is bigger (or equal) than 1',
-                reply_markup=k_b_exit
-            )
+        reward_balance = count_vip_award_balance(name, reward_size)
+        await message.answer(
+            f'Your settings are saved to database!\n'
+            f'You can do {reward_balance} rewards.',
+            reply_markup=k_b
+        )
+
+        await state.finish()
+
     except Exception:
         await message.answer(
             'I take only integer or decimal numbers. '
@@ -413,7 +400,6 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
             UPDATE vip_users SET viz_account = $1, regular_key = $2
             WHERE tg_id = $3;
             ''', name, answer, user_id)
-
             await connection.close()
 
             await message.answer(
@@ -439,7 +425,6 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
             UPDATE vip_users SET viz_account = $1, regular_key = $2
             WHERE tg_id = $3;
             ''', name, answer, user_id)
-
             await connection.close()
 
             await message.answer(
@@ -457,36 +442,24 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
 async def handle_fsm_edit_reward_size(
     message: types.Message, state: FSMContext
 ):
-    raw_answer = message.text
     user_id = message.from_user.id
-    # right answer after substituting ',' to '.' and cleaning from ' '
-    answer = raw_answer.replace(',', '.').replace(' ', '')
-    parts = answer.split('.')
+    raw_answer = message.text
+    filtered_answer = re.sub(r"[^\d.,]+", "", raw_answer).replace(',', '.')
 
     try:
-        first_part = parts[0]
-        second_part = parts[1][0]
-        rounded_num = f'{first_part}.{second_part}'
-        if float(rounded_num) >= 1:
-            connection = await est_connection()
+        answer = round(float(filtered_answer), 1)
+        connection = await est_connection()
+        await connection.execute('''
+        UPDATE vip_users SET reward_size = $1 WHERE tg_id = $2;
+        ''', answer, user_id)
+        await connection.close()
+        await message.answer(
+            'Your successfully edited the reward size!',
+            reply_markup=k_b
+        )
 
-            await connection.execute('''
-            UPDATE vip_users SET reward_size = $1 WHERE tg_id = $2;
-            ''', rounded_num, user_id)
+        await state.finish()
 
-            await connection.close()
-
-            await message.answer(
-                'Your successfully edited the reward size!',
-                reply_markup=k_b
-            )
-
-            await state.finish()
-        else:
-            await message.answer(
-                'Please, provide a number that is bigger (or equal) than 1',
-                reply_markup=k_b_exit
-            )
     except Exception:
         await message.answer(
             'I take only integer or decimal numbers. '
@@ -496,7 +469,7 @@ async def handle_fsm_edit_reward_size(
 
 
 @dp.message_handler(content_types=['any'])
-async def handle_forwarded_text_msgs(message: types.Message):
+async def handle_forwarded_msgs(message: types.Message):
     user_id = message.from_user.id
     author_id = message.forward_from.id if message.forward_from\
         else message.from_user.id
@@ -506,27 +479,36 @@ async def handle_forwarded_text_msgs(message: types.Message):
             return await message.answer(
                 'You cannot reward a bot 🤷‍♂️', reply_markup=k_b
             )
-
         message_text = f'\'{message.text[:50]}\'' if message.text\
             else 'THE FORWARDED MESSAGE DOES NOT CONTAIN TEXT'
 
         connection = await est_connection()
-
-        reward_size = await connection.fetchrow('''
-            SELECT reward_size from vip_users WHERE tg_id = $1;
+        data = await connection.fetch('''
+            SELECT viz_account, reward_size from vip_users WHERE tg_id = $1;
         ''', user_id)
-
         await connection.close()
 
+        reward_size = float(data[0]['reward_size'])
+        viz_acc = data[0]['viz_account']
+        reward_balance = count_vip_award_balance(viz_acc, reward_size)
+
         if reward_size:
-            await message.answer(
-                f'You rewarded a user under Telegram id {author_id}\n'
-                f'with {reward_size[0]} VIZ\n'
-                f'The text from the forwarded message is:\n'
-                f'<em>{message_text}...</em>',
-                parse_mode='html',
-                reply_markup=k_b
-            )
+            if not check_viz_account_capital(viz_acc):
+                return await message.answer(
+                    'You don\'t have enough social capital. '
+                    'Please, raise your capital and try again.'
+                )
+            if reward_balance > 0:
+                await message.answer(
+                    f'You rewarded a user under Telegram id {author_id}\n'
+                    f'with {reward_size} VIZ\n'
+                    f'The text from the forwarded message is:\n'
+                    f'<em>{message_text}...</em>',
+                    parse_mode='html',
+                    reply_markup=k_b
+                )
+            else:
+                return await message.answer('Your reward balance is too low')
         elif not reward_size:
             await message.answer(
                 'You did not provide required data for me '
