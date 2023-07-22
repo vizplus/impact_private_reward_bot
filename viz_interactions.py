@@ -39,7 +39,7 @@ def check_viz_account_capital(account_name: str) -> bool:
         acc_rvs = float(acc['received_vesting_shares'].split()[0])
         acc_dvs = float(acc['delegated_vesting_shares'].split()[0])
         acc_capital = acc_vs + acc_rvs - acc_dvs
-        if acc_capital >= 25000:
+        if acc_capital >= 0:
             return True
         else:
             return False
@@ -75,7 +75,7 @@ def check_reg_key_correct(regular_key: str, account_name: str) -> bool:
 def count_vip_award_balance(account_name: str, reward_size: float) -> int:
     '''
     Provide a VIZ account name.
-    Returns an integer number signaling the amount of award VIZ user can do.
+    Returns an integer number signaling the amount of awards VIZ user can do.
 
     :param str account_name: Name of the account
     :param float reward_size: Reward size of the account

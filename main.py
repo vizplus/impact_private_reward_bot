@@ -190,9 +190,7 @@ async def handle_edit_reg_key_command(message: types.Message):
 
 
 @dp.message_handler(commands=['reward'])
-@dp.message_handler(
-    lambda msg: msg.text and 'reward' in msg.text.lower()
-)
+@dp.message_handler(lambda msg: msg.text and 'reward' in msg.text.lower())
 async def handle_edit_reward_size_command(message: types.Message):
     user_id = message.from_user.id
 
@@ -230,13 +228,7 @@ async def handle_status_command(message: types.Message):
         data_name = list(data.values())[2]
         data_reg_key = list(data.values())[3]
         data_reward_size = list(data.values())[4]
-
-        # if count_vip_award_balance(data_name, data_reward_size) > 0:
-        reward_balance = count_vip_award_balance(
-            data_name, data_reward_size
-        )
-        # else:
-        #     reward_balance = 0
+        reward_balance = count_vip_award_balance(data_name, data_reward_size)
 
         await message.answer(
                 f'Name: <b>{data_name}</b>\n'
@@ -336,23 +328,30 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
         reg_key = data.get('reg_key')
         reward_size = round(float(filtered_answer), 1)
 
-        connection = await est_connection()
-        await connection.execute('''
-            INSERT INTO vip_users (
-            tg_id, viz_account, regular_key, reward_size
+        if reward_size >= 1:
+            connection = await est_connection()
+            await connection.execute('''
+                INSERT INTO vip_users (
+                tg_id, viz_account, regular_key, reward_size
+                )
+                VALUES ($1, $2, $3, $4);
+            ''', tg_id, name, reg_key, reward_size)
+            await connection.close()
+
+            reward_balance = count_vip_award_balance(name, reward_size)
+            await message.answer(
+                f'Your settings are saved to database!\n'
+                f'You can do {reward_balance} rewards.',
+                reply_markup=k_b
             )
-            VALUES ($1, $2, $3, $4);
-        ''', tg_id, name, reg_key, reward_size)
-        await connection.close()
 
-        reward_balance = count_vip_award_balance(name, reward_size)
-        await message.answer(
-            f'Your settings are saved to database!\n'
-            f'You can do {reward_balance} rewards.',
-            reply_markup=k_b
-        )
-
-        await state.finish()
+            await state.finish()
+        else:
+            await message.answer(
+                'The reward size can\'t be less than 1. '
+                'Please, try again.',
+                reply_markup=k_b_exit
+            )
 
     except Exception:
         await message.answer(
@@ -447,18 +446,25 @@ async def handle_fsm_edit_reward_size(
     filtered_answer = re.sub(r"[^\d.,]+", "", raw_answer).replace(',', '.')
 
     try:
-        answer = round(float(filtered_answer), 1)
-        connection = await est_connection()
-        await connection.execute('''
-        UPDATE vip_users SET reward_size = $1 WHERE tg_id = $2;
-        ''', answer, user_id)
-        await connection.close()
-        await message.answer(
-            'Your successfully edited the reward size!',
-            reply_markup=k_b
-        )
+        reward_size = round(float(filtered_answer), 1)
+        if reward_size >= 1:
+            connection = await est_connection()
+            await connection.execute('''
+            UPDATE vip_users SET reward_size = $1 WHERE tg_id = $2;
+            ''', reward_size, user_id)
+            await connection.close()
+            await message.answer(
+                'Your successfully edited the reward size!',
+                reply_markup=k_b
+            )
 
-        await state.finish()
+            await state.finish()
+        else:
+            await message.answer(
+                'The reward size can\'t be less than 1. '
+                'Please, try again.',
+                reply_markup=k_b_exit
+            )
 
     except Exception:
         await message.answer(
@@ -503,7 +509,8 @@ async def handle_forwarded_msgs(message: types.Message):
                     f'You rewarded a user under Telegram id {author_id}\n'
                     f'with {reward_size} VIZ\n'
                     f'The text from the forwarded message is:\n'
-                    f'<em>{message_text}...</em>',
+                    f'<em>{message_text}...</em>\n\n'
+                    f'You can do <b>{reward_balance}</b> awards.',
                     parse_mode='html',
                     reply_markup=k_b
                 )
