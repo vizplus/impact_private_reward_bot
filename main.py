@@ -13,7 +13,8 @@ from viz_interactions import (
     check_viz_account,
     check_viz_account_capital,
     check_reg_key_correct,
-    count_vip_award_balance
+    count_vip_award_balance,
+    reward_user
 )
 
 
@@ -24,7 +25,7 @@ storage = MemoryStorage()
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot, storage=storage)
 
-# Constants
+# Constants containing repeatable messages
 NEWCOMER_MSG = 'Looks like you are a newcomer here. \
 Let\'s begin with /start command.'
 KEY_NOT_FOUND = 'There is no such a regular key under your account on VIZ. \
@@ -38,6 +39,11 @@ Please, try again.'
 @dp.message_handler(commands=['start'])
 @dp.message_handler(lambda msg: msg.text and 'start' in msg.text.lower())
 async def handle_start_command(message: types.Message):
+    '''
+    Command 'start' is used by a user at the beginning of the conversation
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -68,7 +74,14 @@ async def handle_start_command(message: types.Message):
     lambda msg: msg.text and 'back' in msg.text.lower(),
     state='*'
 )
-async def handle_exit_command(message: types.Message, state: FSMContext):
+async def handle_back_command(message: types.Message, state: FSMContext):
+    '''
+    Command 'back' is used by a user when he/she is currently in a FSM state
+    and the intent is to quit ceasing the form filling
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     current_state = await state.get_state()
     if current_state is None:
         return
@@ -83,6 +96,12 @@ async def handle_exit_command(message: types.Message, state: FSMContext):
 @dp.message_handler(commands=['delete'])
 @dp.message_handler(lambda msg: msg.text and 'delete' in msg.text.lower())
 async def handle_delete_command(message: types.Message):
+    '''
+    Command 'delete' is used by a user when he/she intends to delete his/her
+    previously provided data, namely: name, regular key and reward size
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -110,6 +129,14 @@ async def handle_delete_command(message: types.Message):
     state=FSMDelete.Accept_deletion
 )
 async def handle_yes_delete_command(message: types.Message):
+    '''
+    Command 'delete' accompanied by FSMDelete.Accept_deletion state will
+    wipe out all the previously provided user data from the database. 
+    This handler is triggered when a user confirms his/her intent to
+    delete the data
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -130,6 +157,14 @@ async def handle_yes_delete_command(message: types.Message):
     state=FSMDelete.Accept_deletion
 )
 async def handle_no_delete_command(message: types.Message, state: FSMContext):
+    '''
+    Command 'no' accompanied by FSMDelete.Accept_deletion state will
+    quit from wiping out all the user data from database. 
+    This handler is triggered when a user changes his/her decision to
+    delete the data
+
+    :param types.Message message: The message object received from the user
+    '''
     await state.finish()
     await message.answer(
         'You cancelled deleting your data.',
@@ -142,6 +177,12 @@ async def handle_no_delete_command(message: types.Message, state: FSMContext):
     lambda msg: msg.text and 'name' in msg.text.lower()
 )
 async def handle_edit_name_command(message: types.Message):
+    '''
+    Command 'name' is used by a user when he/she intends to change his/her
+    name, provided to database, to a new one.
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -168,6 +209,12 @@ async def handle_edit_name_command(message: types.Message):
     lambda msg: msg.text and 'key' in msg.text.lower()
 )
 async def handle_edit_reg_key_command(message: types.Message):
+    '''
+    Command 'key' is used by a user when he/she intends to change his/her
+    regular key, provided to database, to a new one.
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -192,6 +239,12 @@ async def handle_edit_reg_key_command(message: types.Message):
 @dp.message_handler(commands=['reward'])
 @dp.message_handler(lambda msg: msg.text and 'reward' in msg.text.lower())
 async def handle_edit_reward_size_command(message: types.Message):
+    '''
+    Command 'reward' is used by a user when he/she intends to change his/her
+    reward size, provided to database, to a new one.
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -216,6 +269,12 @@ async def handle_edit_reward_size_command(message: types.Message):
 @dp.message_handler(commands=['status'])
 @dp.message_handler(lambda msg: msg.text and 'status' in msg.text.lower())
 async def handle_status_command(message: types.Message):
+    '''
+    Command 'status' is used by a user when he/she intends to revise his/her
+    previously provided data.
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
 
     connection = await est_connection()
@@ -248,6 +307,11 @@ async def handle_status_command(message: types.Message):
 @dp.message_handler(commands=['help'])
 @dp.message_handler(lambda msg: msg.text and 'help' in msg.text.lower())
 async def handle_help_command(message: types.Message):
+    '''
+    Command 'help' will show all the available bot commands.
+
+    :param types.Message message: The message object received from the user
+    '''
     await message.answer(
             'This bot is created for VIP VIZ-blockchain users. '
             'If you are one of them, you can start using it by '
@@ -273,6 +337,13 @@ async def handle_help_command(message: types.Message):
 
 @dp.message_handler(state=FSMIntro.Q_name)
 async def handle_fsm_name(message: types.Message, state: FSMContext):
+    '''
+    When in FSMIntro.Q_name FSM state, user is prompted to provide his/her
+    name
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     answer = message.text
     if check_viz_account(answer):
         if check_viz_account_capital(answer):
@@ -297,6 +368,13 @@ async def handle_fsm_name(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=FSMIntro.Q_reg_key)
 async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
+    '''
+    When in FSMIntro.Q_reg_key FSM state, user is prompted to provide his/her
+    regular key
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     answer = message.text
     data = await state.get_data()
     name = data['name']
@@ -318,6 +396,13 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=FSMIntro.Q_reward_size)
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
+    '''
+    When in FSMIntro.Q_reward_size FSM state, user is prompted to provide his/her
+    reward size
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     raw_answer = message.text
     filtered_answer = re.sub(r"[^\d.,]+", "", raw_answer).replace(',', '.')
 
@@ -363,6 +448,13 @@ async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=FSMEdit.E_name)
 async def handle_edit_name_cmd(message: types.Message, state: FSMContext):
+    '''
+    When in FSMEdit.E_name FSM state, user is prompted to edit his/her
+    name by providing a new one
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     answer = message.text
     if check_viz_account(answer):
         if check_viz_account_capital(answer):
@@ -387,6 +479,13 @@ async def handle_edit_name_cmd(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=FSMEdit.E_reg_key)
 async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
+    '''
+    When in FSMEdit.E_reg_key FSM state, user is prompted to edit his/her
+    regular key by providing a new one
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     answer = message.text  # reg_key
     user_id = message.from_user.id
     data = await state.get_data()
@@ -441,6 +540,13 @@ async def handle_edit_reg_key_cmd(message: types.Message, state: FSMContext):
 async def handle_fsm_edit_reward_size(
     message: types.Message, state: FSMContext
 ):
+    '''
+    When in FSMEdit.E_reward_size FSM state, user is prompted to edit his/her
+    reward size by providing a new one
+
+    :param types.Message message: The message object received from the user
+    :param FSMContext state: The current state of Finite State Machine
+    '''
     user_id = message.from_user.id
     raw_answer = message.text
     filtered_answer = re.sub(r"[^\d.,]+", "", raw_answer).replace(',', '.')
@@ -476,6 +582,13 @@ async def handle_fsm_edit_reward_size(
 
 @dp.message_handler(content_types=['any'])
 async def handle_forwarded_msgs(message: types.Message):
+    '''
+    When a user is forwarding a message from another user
+    of any types of the content, it triggers the bot to award the user whose
+    forwarded message was provided with VIZ energy using viz-python-lib
+
+    :param types.Message message: The message object received from the user
+    '''
     user_id = message.from_user.id
     author_id = message.forward_from.id if message.forward_from\
         else message.from_user.id
@@ -490,12 +603,14 @@ async def handle_forwarded_msgs(message: types.Message):
 
         connection = await est_connection()
         data = await connection.fetch('''
-            SELECT viz_account, reward_size from vip_users WHERE tg_id = $1;
+            SELECT viz_account, reward_size, regular_key
+            from vip_users WHERE tg_id = $1;
         ''', user_id)
         await connection.close()
 
         reward_size = float(data[0]['reward_size'])
         viz_acc = data[0]['viz_account']
+        regular_key = data[0]['regular_key']
         reward_balance = count_vip_award_balance(viz_acc, reward_size)
 
         if reward_size:
@@ -505,6 +620,18 @@ async def handle_forwarded_msgs(message: types.Message):
                     'Please, raise your capital and try again.'
                 )
             if reward_balance > 0:
+                ### here the reward code block
+                reward_user(
+                    account=viz_acc,
+                    reward_size=reward_size,
+                    forwarded_message=message_text,
+                    author_id=author_id,
+                    regular_key=regular_key
+                )
+
+                # reevaluate the reward_balance
+                reward_balance = count_vip_award_balance(viz_acc, reward_size)
+                ### end of the reward code block
                 await message.answer(
                     f'You rewarded a user under Telegram id {author_id}\n'
                     f'with {reward_size} VIZ\n'
