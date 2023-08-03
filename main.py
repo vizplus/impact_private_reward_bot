@@ -2,7 +2,7 @@ import logging
 import re
 
 from aiogram import Bot, Dispatcher, executor, types
-from config import API_TOKEN
+from config import API_TOKEN, COMMUNITY_ID
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
 
@@ -598,8 +598,6 @@ async def handle_forwarded_msgs(message: types.Message):
             return await message.answer(
                 'You cannot reward a bot 🤷‍♂️', reply_markup=k_b
             )
-        message_text = f'\'{message.text[:50]}\'' if message.text\
-            else 'THE FORWARDED MESSAGE DOES NOT CONTAIN TEXT'
 
         connection = await est_connection()
         data = await connection.fetch('''
@@ -620,13 +618,13 @@ async def handle_forwarded_msgs(message: types.Message):
                     'Please, raise your capital and try again.'
                 )
             if reward_balance > 0:
-                # here the reward code block
+                # here is the reward code block
                 reward_user(
                     account=viz_acc,
                     reward_size=reward_size,
-                    forwarded_message=message_text,
                     author_id=author_id,
-                    regular_key=regular_key
+                    regular_key=regular_key,
+                    community_id=COMMUNITY_ID
                 )
 
                 # reevaluate the reward_balance
@@ -635,8 +633,6 @@ async def handle_forwarded_msgs(message: types.Message):
                 await message.answer(
                     f'You rewarded a user under Telegram id {author_id}\n'
                     f'with {reward_size} VIZ\n'
-                    f'The text from the forwarded message is:\n'
-                    f'<em>{message_text}...</em>\n\n'
                     f'You can do <b>{reward_balance}</b> awards.',
                     parse_mode='html',
                     reply_markup=k_b

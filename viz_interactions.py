@@ -1,8 +1,6 @@
 from viz import Client
 from viz.account import Account
 from vizbase.account import PrivateKey
-from viz.memo import Memo
-from pprint import pprint
 
 node = 'wss://node.viz.cx/ws'
 client = Client(node=node)
@@ -97,13 +95,13 @@ def count_vip_energy_to_spend(account_name: str, reward_size: float) -> float:
 
     Returns:
     - float: The calculated amount of energy to spend
-    
+
     Raises:
     - Exception: If there is an error connecting to the service
     that calculates award-on-capital or retrieving VIP user data
     '''
     try:
-        #  get award-on-capital data required for the calculations
+        # get award-on-capital data required for the calculations
         award_on_capital_acc = Account(
                 account_name='award-on-capital',
                 blockchain_instance=client
@@ -183,52 +181,38 @@ def count_vip_award_balance(account_name: str, reward_size: float) -> int:
     return award_balance
 
 
-#########################################################################
+########################################################################
 def reward_user(
         account: str,
         reward_size: float,
-        forwarded_message: str,
         author_id: str,
         regular_key: str,
-        memo_key: str = ''
+        community_id: str
 ) -> None:
     '''
-    Provide a VIZ account name, reward size, memo and a receiver.
-    Transfers assets to tg.viz user.
+    Transfers assets to tg.viz user, which then award the owner of
+    the forwarded message
 
     :param str account_name: Name of the account
     :param float reward_size: Reward size of the account
-    :param str key: Initiator regular key
-    :param str memo: The message following the transaction
+    :param str author_id: the forwarded message author ID
+    :param str regular_key: Initiator regular key
+    :param str community_id: The community ID
     '''
-    receiver_pub_memo_key = 'VIZ61KuXnrWbTqxzHC82p8nQLUSPZpYudr5412r4rG6ruibBSKnDS'
     client = Client(
-        node=node, keys=[regular_key, memo_key]
+        node=node, keys=[regular_key]
     )
 
     energy = count_vip_energy_to_spend(account, reward_size)
-    memo = f'{account};;{author_id};;{forwarded_message}'
-    m = Memo('roklem', 'first.roklem', blockchain_instance=client)
-    m.unlock_wallet('secret')
-    encrypted_memo = (m.encrypt(memo))
+    memo = f'{account};;{author_id};;{community_id}'
 
     client.award(
-        receiver='first.roklem',
+        receiver='first.roklem',  # tg.viz must be the reciever of the award
         energy=energy,
         account=account,
-        memo=encrypted_memo
+        memo=memo
     )
     print('award successful')
-
-
-print(reward_user(
-    'roklem',
-    1,
-    'my name is not for sounding',
-    '23929392',
-    '5Jet4kTUoQWBvpQt8gKQHkjbVyWzC6xEXoVnRxqWSGoT8AXZcnN',
-    '5JWY8Ww6eFYsZHRJTzCQ8WCT4vrfXoQS5epkkPvgqAqUYREG9Lw'
-))
 
 
 ''' P.S. Опытным путем определил какие ошибки при
@@ -236,36 +220,6 @@ print(reward_user(
 возникает ошибка Walletlocked, если не передать ключ в Client()
 
 Чтобы использовать метод .transfer() нужно передавать туда active key, а не
-regular key. В связи с этим вопроса, а как, собственно, получить активный ключ
-юзера, ведь бот просит только регулярный ключ.
+regular key. В связи с этим вопроса, а как, собственно, получить активный
+ключ юзера, ведь бот просит только регулярный ключ.
 '''
-
-
-def get():
-    public = PrivateKey(
-            '5Jet4kTUoQWBvpQt8gKQHkjbVyWzC6xEXoVnRxqWSGoT8AXZcnN', prefix='VIZ'
-        )
-    acc = Account(
-            account_name='roklem',
-            blockchain_instance=client
-        )
-    items = dict(acc.items())
-    return items
-
-
-# pprint(get())
-
-
-from viz.memo import Memo
-
-client = Client(
-        node=node, keys='5JWY8Ww6eFYsZHRJTzCQ8WCT4vrfXoQS5epkkPvgqAqUYREG9Lw'
-    )
-m = Memo("roklem", "bob", blockchain_instance=client)
-m.unlock_wallet("secret")
-enc = (m.encrypt("roklem;;1510322344;;'Отличный проект - мы покупатели их сервиса!'"))
-# print(enc)
-# print(m.decrypt(enc))
-
-# m.blockchain.wallet.unlock("secret")
-print(m.decrypt('#QWoHeNvbdafnRR9ftgrmDtV6M3FHmX9SnrQFgBtccfFdurakkpuwu6GR6yTM6XBnJJSNTZJah3QaQHeWCxLkxp4ufxJcABxsDUMzXWznhKti3mkDSw9XzZftvHKR8iSh7jL9wEGZYVzs4QJbmdxPxHBbKd5QnbQBhybtzdrdA3qmkLdnjAqp5w2p9HNPHzMZv3S88DgNzxnaaBZeMjVbVqMPSprAd4odmA1vamtB5JMiTC9pkNPZnmV1prATgEYBaDb9'))
