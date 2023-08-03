@@ -111,7 +111,7 @@ async def handle_delete_command(message: types.Message):
     await connection.close()
 
     if data:
-        await FSMDelete.Accept_deletion.set()
+        await FSMDelete.Confirm_deletion.set()
         await message.answer(
             'Are you sure you want to delete your account data?',
             reply_markup=k_b_deletion
@@ -126,12 +126,12 @@ async def handle_delete_command(message: types.Message):
 
 @dp.message_handler(
     lambda msg: msg.text and 'delete' in msg.text.lower(),
-    state=FSMDelete.Accept_deletion
+    state=FSMDelete.Confirm_deletion
 )
 async def handle_yes_delete_command(message: types.Message):
     '''
-    Command 'delete' accompanied by FSMDelete.Accept_deletion state will
-    wipe out all the previously provided user data from the database. 
+    Command 'delete' accompanied by FSMDelete.Confirm_deletion state will
+    wipe out all the previously provided user data from the database.
     This handler is triggered when a user confirms his/her intent to
     delete the data
 
@@ -154,12 +154,12 @@ async def handle_yes_delete_command(message: types.Message):
 
 @dp.message_handler(
     lambda msg: msg.text and 'no' in msg.text.lower(),
-    state=FSMDelete.Accept_deletion
+    state=FSMDelete.Confirm_deletion
 )
 async def handle_no_delete_command(message: types.Message, state: FSMContext):
     '''
-    Command 'no' accompanied by FSMDelete.Accept_deletion state will
-    quit from wiping out all the user data from database. 
+    Command 'no' accompanied by FSMDelete.Confirm_deletion state will
+    quit from wiping out all the user data from database.
     This handler is triggered when a user changes his/her decision to
     delete the data
 
@@ -397,8 +397,8 @@ async def handle_fsm_reg_key(message: types.Message, state: FSMContext):
 @dp.message_handler(state=FSMIntro.Q_reward_size)
 async def handle_fsm_reward_size(message: types.Message, state: FSMContext):
     '''
-    When in FSMIntro.Q_reward_size FSM state, user is prompted to provide his/her
-    reward size
+    When in FSMIntro.Q_reward_size FSM state, user is prompted to provide
+    his/her reward size
 
     :param types.Message message: The message object received from the user
     :param FSMContext state: The current state of Finite State Machine
@@ -620,7 +620,7 @@ async def handle_forwarded_msgs(message: types.Message):
                     'Please, raise your capital and try again.'
                 )
             if reward_balance > 0:
-                ### here the reward code block
+                # here the reward code block
                 reward_user(
                     account=viz_acc,
                     reward_size=reward_size,
@@ -631,7 +631,7 @@ async def handle_forwarded_msgs(message: types.Message):
 
                 # reevaluate the reward_balance
                 reward_balance = count_vip_award_balance(viz_acc, reward_size)
-                ### end of the reward code block
+                # end of the reward code block
                 await message.answer(
                     f'You rewarded a user under Telegram id {author_id}\n'
                     f'with {reward_size} VIZ\n'

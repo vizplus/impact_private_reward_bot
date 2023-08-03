@@ -10,10 +10,13 @@ client = Client(node=node)
 
 def check_viz_account(account_name: str) -> bool:
     '''
-    Provide a VIZ account name. Returns True if there is such an account,
-    otherwise returns False.
+    Provide a VIZ account name
 
     :param str account_name: Name of the account
+
+    Returns:
+    - True if there is such an account,
+    otherwise returns False.
     '''
     try:
         Account(
@@ -26,10 +29,16 @@ def check_viz_account(account_name: str) -> bool:
 
 def check_viz_account_capital(account_name: str) -> bool:
     '''
-    Provide a VIZ account name.
-    Returns True if account capital is >= 25000 viz, otherwise returns False.
+    Provide a VIZ account name
 
     :param str account_name: Name of the account
+
+    Returns:
+    - True if account capital is >= 25000 viz, otherwise returns False
+
+    Raises:
+    - Exception: If there is an error connecting to the service
+    that checks the account capital
     '''
     try:
         acc = Account(
@@ -51,11 +60,17 @@ def check_viz_account_capital(account_name: str) -> bool:
 
 def check_reg_key_correct(regular_key: str, account_name: str) -> bool:
     '''
-    Provide a regular_key and the corresponding VIZ account name.
-    Returns True if there is such a regular_key in blockchain.
+    Provide a regular_key and the corresponding VIZ account name
 
     :param str regular_key: Private regular key
     :param str account_name: Name of the account
+
+    Returns:
+    - bool: True if the regular key matches the regular authority
+    key of the account, False otherwise
+
+    Raises:
+    - Exception: If there is an error during the key comparison
     '''
     try:
         public = PrivateKey(
@@ -75,11 +90,17 @@ def check_reg_key_correct(regular_key: str, account_name: str) -> bool:
 
 def count_vip_energy_to_spend(account_name: str, reward_size: float) -> float:
     '''
-    Provide a VIZ account name and the reward size.
-    Returns an energy to spend.
+    Provide a VIZ account name and the reward size
 
     :param str account_name: Name of the account
     :param float reward_size: Reward size of the account
+
+    Returns:
+    - float: The calculated amount of energy to spend
+    
+    Raises:
+    - Exception: If there is an error connecting to the service
+    that calculates award-on-capital or retrieving VIP user data
     '''
     try:
         #  get award-on-capital data required for the calculations
@@ -120,8 +141,16 @@ def count_vip_award_balance(account_name: str, reward_size: float) -> int:
     Provide a VIZ account name.
     Returns an integer number signaling the amount of awards VIZ user can do.
 
-    :param str account_name: Name of the account
+    :param str account_name: The name of the account
+    for which to calculate the award balance
     :param float reward_size: Reward size of the account
+
+     Returns:
+    - int: The calculated award balance
+
+    Raises:
+    - Exception: If there is an error connecting to the service
+    that calculates award-on-capital
     '''
     try:
         # get award-on-capital data required for the calculations
