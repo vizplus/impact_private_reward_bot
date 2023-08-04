@@ -3,7 +3,7 @@ Telegram bot for interacting with VIZ blockchain.
 With the help of this bot a user (administrator of a private Telegram group) can award group members with VIZ token. It can be done by forwarding the target message to this bot in Telegram. Bot will parse administrator's name, reciever's Telegram ID and unique identifier of the group (COMMUNITY_ID) in which the message had appeared. The latter must be provided by the administrator (it's in config.py).
 
 ## Getting Started
-![clone repository](https://raw.github.com/David-Roklem/TG-bot-VIZ/blob/main/Screenshots/Git%20clone.png?raw=true)
+![https://raw.github.com/David-Roklem/TG-bot-VIZ/blob/main/Screenshots/Git%20clone.png?raw=true](clone repository)
 You can clone this repository by using terminal command:
 ```
 git clone https://github.com/David-Roklem/TG-bot-VIZ.git
