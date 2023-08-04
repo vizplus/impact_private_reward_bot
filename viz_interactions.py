@@ -207,7 +207,7 @@ def reward_user(
     memo = f'{account};;{author_id};;{community_id}'
 
     client.award(
-        receiver='first.roklem',  # tg.viz must be the reciever of the award
+        receiver='tg.viz',  # tg.viz must be the reciever of the award
         energy=energy,
         account=account,
         memo=memo
