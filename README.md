@@ -7,6 +7,7 @@ You can clone this repository by using terminal command:
 ```
 git clone https://github.com/David-Roklem/TG-bot-VIZ.git
 ```
+Don't forget to create API token using @BotFather. This token must be added either to .env file or to config.py (the information below) under API_TOKEN variable
 
 ### Dependencies
 ```
