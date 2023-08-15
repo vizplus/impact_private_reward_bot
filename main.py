@@ -593,66 +593,77 @@ async def handle_forwarded_msgs(message: types.Message):
     author_id = message.forward_from.id if message.forward_from\
         else message.from_user.id
 
-    if user_id != author_id:
-        if message.forward_from.is_bot:
-            return await message.answer(
-                'You cannot reward a bot 🤷‍♂️', reply_markup=k_b
-            )
+    connection = await est_connection()
+    data = await connection.fetch('''
+        SELECT viz_account, reward_size, regular_key
+        from vip_users WHERE tg_id = $1;
+    ''', user_id)
+    await connection.close()
 
-        connection = await est_connection()
-        data = await connection.fetch('''
-            SELECT viz_account, reward_size, regular_key
-            from vip_users WHERE tg_id = $1;
-        ''', user_id)
-        await connection.close()
-
-        reward_size = float(data[0]['reward_size'])
-        viz_acc = data[0]['viz_account']
-        regular_key = data[0]['regular_key']
-        reward_balance = count_vip_award_balance(viz_acc, reward_size)
-
-        if reward_size:
-            if not check_viz_account_capital(viz_acc):
+    if data:
+        if user_id != author_id:
+            if message.forward_from.is_bot:
                 return await message.answer(
-                    'You don\'t have enough social capital. '
-                    'Please, raise your capital and try again.'
-                )
-            if reward_balance > 0:
-                # here is the reward code block
-                reward_user(
-                    account=viz_acc,
-                    reward_size=reward_size,
-                    author_id=author_id,
-                    regular_key=regular_key,
-                    community_id=COMMUNITY_ID
+                    'You cannot reward a bot 🤷‍♂️', reply_markup=k_b
                 )
 
-                # reevaluate the reward_balance
-                reward_balance = count_vip_award_balance(viz_acc, reward_size)
-                # end of the reward code block
+            reward_size = float(data[0]['reward_size'])
+            print(data)
+            viz_acc = data[0]['viz_account']
+            regular_key = data[0]['regular_key']
+            reward_balance = count_vip_award_balance(viz_acc, reward_size)
+
+            if reward_size:
+                if not check_viz_account_capital(viz_acc):
+                    return await message.answer(
+                        'You don\'t have enough social capital. '
+                        'Please, raise your capital and try again.'
+                    )
+                if reward_balance > 0:
+                    # here is the reward code block
+                    reward_user(
+                        account=viz_acc,
+                        reward_size=reward_size,
+                        author_id=author_id,
+                        regular_key=regular_key,
+                        community_id=COMMUNITY_ID
+                    )
+
+                    # reevaluate the reward_balance
+                    reward_balance = count_vip_award_balance(
+                        viz_acc, reward_size
+                    )
+                    # end of the reward code block
+                    await message.answer(
+                        f'You rewarded a user under Telegram id {author_id}\n'
+                        f'with {reward_size} VIZ\n'
+                        f'You can do <b>{reward_balance}</b> awards.',
+                        parse_mode='html',
+                        reply_markup=k_b
+                    )
+                else:
+                    return await message.answer(
+                        'Your reward balance is too low'
+                    )
+            elif not reward_size:
                 await message.answer(
-                    f'You rewarded a user under Telegram id {author_id}\n'
-                    f'with {reward_size} VIZ\n'
-                    f'You can do <b>{reward_balance}</b> awards.',
-                    parse_mode='html',
+                    'You did not provide required data for me '
+                    'to handle forwarded messages. '
+                    'Use /start command to fix that.',
                     reply_markup=k_b
                 )
-            else:
-                return await message.answer('Your reward balance is too low')
-        elif not reward_size:
+        elif message.forward_from_chat and message.forward_from is None:
             await message.answer(
-                'You did not provide required data for me '
-                'to handle forwarded messages. '
-                'Use /start command to fix that.',
+                'You cannot reward a channel 🤷‍♂️', reply_markup=k_b
+            )
+        elif message.forward_from is None:
+            await message.answer(
+                'You cannot reward the sender of this message!',
                 reply_markup=k_b
             )
-    elif message.forward_from_chat and message.forward_from is None:
+    else:
         await message.answer(
-            'You cannot reward a channel 🤷‍♂️', reply_markup=k_b
-        )
-    elif message.forward_from is None:
-        await message.answer(
-            'You cannot reward the sender of this message!',
+            NEWCOMER_MSG,
             reply_markup=k_b
         )
 
