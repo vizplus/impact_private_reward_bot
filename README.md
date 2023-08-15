@@ -43,4 +43,3 @@ DB_PASSW=''
 DB_HOST=''
 DB_PORT=''
 ```
-You can also skip this part and just use config.py file. In this case you will need to uncomment the commented code (with leading '#') and comment the code above. Right now the code base is adapted for using config.py rather than creating .env

@@ -29,4 +29,4 @@ DB_PORT = os.getenv('DB_PORT')
 # It's ID should begin with "minus" ("-").
 # Add the ID inside the quotation marks, like this:
 # COMMUNITY_ID = '-129934934922'
-COMMUNITY_ID = '123'
+COMMUNITY_ID = '123'  # must be replaced to your community id
