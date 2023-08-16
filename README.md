@@ -43,3 +43,16 @@ DB_PASSW=''
 DB_HOST=''
 DB_PORT=''
 ```
+
+### pip or poetry
+If you want to use this bot on you local machine, you can choose either pip or poetry. With poetry usage there is the instruction above, In case you decide to use pip, you wil need this command:
+```
+pip install -r requirements.txt
+```
+Also, you will need to install viz-python-lib separately (as it is not production ready to install it from PyPI yet):
+```
+pip install https://github.com/VIZ-Blockchain/viz-python-lib/archive/refs/heads/master.zip
+```
+
+### Deployment
+If you want to deploy the bot to a server (e.g. VPS/VDS), it is recommended to use Docker. Dockerfile and docker-compose.yml are already present in this project. Obviously, there are other options such as cloud platforms, PaaS etc. which don't require Docker.
